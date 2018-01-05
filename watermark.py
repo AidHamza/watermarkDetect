@@ -4,6 +4,7 @@
 - [Pillow](https://pypi.python.org/pypi/Pillow/2.0.0)
 """
 import glob
+import sys, getopt
 
 from classify import MultinomialNB
 from PIL import Image
@@ -11,12 +12,9 @@ from PIL import Image
 
 TRAINING_POSITIVE = 'training-positive/*.jpg'
 TRAINING_NEGATIVE = 'training-negative/*.jpg'
-TEST_POSITIVE = 'test-positive/*.jpg'
-TEST_NEGATIVE = 'test-negative/*.jpg'
 
-# How many pixels to grab from the top-right of image.
-CROP_WIDTH, CROP_HEIGHT = 100, 100
-RESIZED = (16, 16)
+# Size of the Watermark image
+RESIZED = (219, 40)
 
 
 def get_image_data(infile):
@@ -32,7 +30,6 @@ def get_image_data(infile):
     bottom = (height + thumb_height)/2
 
     # left upper right lower
-    #box = width - CROP_WIDTH, 0, width, CROP_HEIGHT
     box = left, top, right, bottom
     print box
     region = image.crop(box)
@@ -48,7 +45,31 @@ def get_image_data(infile):
     return values
 
 
-def main():
+def main(argv):
+    # Get directory argument
+    try:
+        opts, args = getopt.getopt(argv,"h:d:",["help", "dir="])
+    except getopt.GetoptError:
+        print 'watermark.py -d <directory_name>'
+        sys.exit(2)
+
+    for opt, arg in opts:
+        if opt == '-h':
+            print 'watermark.py -d <directory_name>'
+            sys.exit()
+        elif opt in ("-d", "--dir"):
+            directory = arg + "/*.jpg"
+
+    try:
+        if directory is None:
+            print 'Directory flag empty, For help type: watermark.py -h'
+            sys.exit(2)
+    except NameError:
+        print 'Directory flag not provided, For help type: watermark.py -h'
+        sys.exit()
+
+
+    print directory
     watermark = MultinomialNB()
     # Training
     count = 0
@@ -64,16 +85,9 @@ def main():
         print 'Training', count
     # Testing
     correct, total = 0, 0
-    '''for infile in glob.glob(TEST_POSITIVE):
-        data = get_image_data(infile)
-        prediction = watermark.classify(data)
-        if prediction.label == 'positive':
-            correct += 1
-        total += 1
-        print 'Testing ({0} / {1})'.format(correct, total)'''
-
+    
     nonWatermarked = open("toWatermark.txt", "w")
-    for infile in glob.glob(TEST_NEGATIVE):
+    for infile in glob.glob(directory):
         data = get_image_data(infile)
         prediction = watermark.classify(data)
         if prediction.label == 'negative':
@@ -86,4 +100,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    main(sys.argv[1:])
